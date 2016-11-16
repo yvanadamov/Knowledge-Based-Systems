@@ -26,56 +26,59 @@ start = args[1];
 end = args[2];
 fileName = args[3];
 
-# returns dataFrame with name and children array 
-# getCityData = function(data, cityName, neighbours) {
-# 	cityData = subset(data, X == cityName, select = neighbours)
-# 	return(cityData)
-# }
-
-# returns pathlen, pathtime and distance
-getTravelData = function(cityInfo) {
-	destinationInfo = cityInfo
-	names(destinationInfo) = c("city")
-	stringified = toString(destinationInfo$city)
-	listified = strsplit(stringified, "\\|")
-	numerical = as.numeric(listified[[1]])
-	return(numerical)
-}
 
 
 astar = function(start, end, fileName) {
 	data = read.csv(fileName)
 	# Veliko Turnovo -> Veliko.Turnovo
-	cities = gsub(" ", ".", data$X)
+	data$X = gsub(" ", ".", data$X)
+	
+	cities = data$X
 
-	visitedTable = rep("none", length(cities))
-	names(visitedTable) = cities
+	# create table with cities euristics and anchors info
+	euristics = apply(data[end], 1, function(x) {
+		g = strsplit(x[end], '[|]')[[1]][3]
+		return(as.integer(g))
+	})
 
-	notvisited = cities[!cities == start]
+	euristicsTable = data.frame(euristic = euristics)
 
-	firstToSecond = subset(data, X == start, select=c(end))
-	travelData = getTravelData(firstToSecond)
+	euristicsTable$cameFrom = "none"
+	euristicsTable$totalPathLen = 9999999
+	euristicsTable$totalPathTime = 9999999
+	
+	rownames(euristicsTable) = cities
+
+	# intial values for staring row
+	euristicsTable[start, "totalPathLen"] = 0
+	euristicsTable[start, "totalPathTime"] = 0
+	euristicsTable[start, "cameFrom"] = "start"
+	
+	# print(euristicsTable)
 
 	g_score = 0
-	f_score = travelData[3]
+	f_score = euristicsTable[start, "euristic"]
 
 	pq = PriorityQueue()
 
 	pq$insert(g_score+f_score, start)
 
-	before = "started"
-	
+	notvisited = cities
+
 	while(!pq$empty()) {
 		top = pq$pop()
+		current = top$value
+		print(paste0("Top: ", current))
+		print(paste0("Priority: ", top$key))
 		
-		visitedTable[top$value] = before
-
-		# does this check work?
-		if(top == end) {
-			return(recontructPath(came_from, end))
+		if(current == end) {
+			print("aideeee")
+			break
+			# return(recontructPath(came_from, end))
 		}
 
-		neighbours = subset(data, X == start, select=notvisited)
+		notvisited = notvisited[!notvisited == current]
+		neighbours = subset(data, X == current, select=notvisited)
 
 		reachable = Filter(function(v) {
 			vectorized = as.vector(v)
@@ -83,18 +86,36 @@ astar = function(start, end, fileName) {
 			length(hasPath) < 1
 		}, neighbours)
 
-		insertCity = function(x, output) {
-			wellName <- x[1]
-			plateName <- x[2]
-			wellID <- 1
-			print(paste(wellID, x[3], x[4], sep=","))
-			cat(paste(wellID, x[3], x[4], sep=","), file= output, append = T, fill = T)
-			}
+		# oks
+		
+		for(city in names(reachable)) {
+			cityInfo = as.vector(reachable[,city])
+			cityData = strsplit(cityInfo, '[|]')[[1]]
+			numCityData = as.integer(cityData)
 
-		apply(d, 1, f, output = 'outputfile')
+			euristicsTable[city, "cameFrom"] = current
 
-		print(reachable)
+			timeFromAncestor = euristicsTable[current, "totalPathTime"] + numCityData[2]
+			euristicsTable[city, "totalPathTime"] = timeFromAncestor
+			
+			lengthFromAncestor = euristicsTable[current, "totalPathLen"] + numCityData[1]
+			euristicsTable[city, "totalPathLen"] = lengthFromAncestor
+			
+			euristic = euristicsTable[city, "euristic"]
+
+			priority = lengthFromAncestor + euristic
+			pq$insert(priority, city)
+
+			# print(paste0("Added city: ", city))
+			# print(paste0("Priority: ", priority))	
+			# print(paste0("euristic: ", euristicsTable[city, "euristic"]))
+			# print(cityData)
+			# print(paste0("Parent total len: ", euristicsTable[current, "totalPathLen"]))	
+		}
+		# optimization
+		notvisited = notvisited[!notvisited %in% names(reachable)]
 	}
+	print(euristicsTable)
 }
 
 astar(start, end, fileName)
