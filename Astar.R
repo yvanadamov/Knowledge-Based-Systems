@@ -35,8 +35,9 @@ printPath = function(eurTable, end) {
 		current = eurTable[current,"cameFrom"]
 	}
 
-	print(visited)
-	# uncomment to see the map at the end of algorith
+	# uncomment if the path is not dispayed after executing script
+	# print(visited)
+	# uncomment to see the map at the end of algorithm
 	# print(eurTable)
 
 	return(visited)
@@ -68,7 +69,8 @@ astar = function(start, end, fileName) {
 	euristicsTable[start, "totalPathTime"] = 0
 	euristicsTable[start, "cameFrom"] = "start"
 	
-	print(euristicsTable)
+	# Uncomment to see initial state of the table
+	# print(euristicsTable)
 
 	g_score = 0
 	f_score = euristicsTable[start, "euristic"]
